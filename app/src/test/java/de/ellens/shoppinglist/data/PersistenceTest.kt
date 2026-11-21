@@ -49,5 +49,6 @@ class PersistenceTest {
         assertEquals(2, db2.catalogDao().getAll().size)
         db2.close()
         TestSupport.context.deleteDatabase(name)
+        Unit
     }
 }

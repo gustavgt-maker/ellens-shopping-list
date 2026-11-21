@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -29,7 +30,8 @@ class SettingsRepositoryTest {
     @Test fun settingsSurviveRestart() = runBlocking {
         val file = File(TestSupport.tempDir("settings"), "s.preferences_pb")
 
-        val scope1 = CoroutineScope(Dispatchers.IO + SupervisorJob())
+        val job1 = SupervisorJob()
+        val scope1 = CoroutineScope(Dispatchers.IO + job1)
         val repo1 = SettingsRepository(TestSupport.newDataStore(file, scope1))
         repo1.setThemeMode(ThemeMode.DARK)
         repo1.setFont(AppFont.ATKINSON)
@@ -37,7 +39,8 @@ class SettingsRepositoryTest {
         repo1.setHapticsEnabled(false)
         repo1.setKeepScreenOn(true)
         repo1.setLastOpenedList(42L)
-        scope1.cancel() // simuliert App-Ende: DataStore-Instanz wird verworfen
+        // Simuliert App-Ende: DataStore-Instanz vollständig schließen, bevor die Datei neu geöffnet wird.
+        job1.cancelAndJoin()
 
         val scope2 = CoroutineScope(Dispatchers.IO + SupervisorJob())
         val repo2 = SettingsRepository(TestSupport.newDataStore(file, scope2))
