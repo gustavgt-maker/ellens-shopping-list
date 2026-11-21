@@ -23,8 +23,9 @@ jobs:
       - name: Gradle einrichten
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Android SDK einrichten
-        uses: android-actions/setup-android@v3
+      # Das Android SDK ist auf den GitHub-Runnern vorinstalliert (ANDROID_HOME).
+      - name: Android SDK prüfen
+        run: echo "ANDROID_HOME=$ANDROID_HOME" && ls "$ANDROID_HOME/platforms" | tail -5
 
       - name: Unit-Tests ausführen
         run: ./gradlew --no-daemon testDebugUnitTest
