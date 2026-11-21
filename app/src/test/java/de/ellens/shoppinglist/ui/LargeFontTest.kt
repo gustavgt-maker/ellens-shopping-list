@@ -81,7 +81,7 @@ class LargeFontTest {
         listOf(ListTags.NAME_FIELD, ListTags.QUANTITY_FIELD, ListTags.ADD_BUTTON, ListTags.edit(1)).forEach { tag ->
             val bounds = compose.onNodeWithTag(tag).getBoundsInRoot()
             assertTrue("$tag ragt über den Bildschirmrand", bounds.right.value <= screenRight + 0.5f)
-            assertTrue("$tag hat keine Breite", bounds.width.value >= 40f)
+            assertTrue("$tag hat keine Breite", (bounds.right - bounds.left).value >= 40f)
         }
     }
 
