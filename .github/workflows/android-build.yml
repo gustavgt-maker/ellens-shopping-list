@@ -1,0 +1,52 @@
+# Baut die App in der Cloud (GitHub Actions), führt alle Unit-Tests aus und stellt die
+# Debug-APK als herunterladbares Artefakt bereit. Kein Android Studio nötig.
+name: Android Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 17 einrichten
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Gradle einrichten
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Android SDK einrichten
+        uses: android-actions/setup-android@v3
+
+      - name: Unit-Tests ausführen
+        run: ./gradlew --no-daemon testDebugUnitTest
+
+      - name: Debug-APK bauen
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Testberichte hochladen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: app/build/reports/tests/
+
+      - name: APK hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: ellens-shopping-list-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+
+      - name: Room-Schema hochladen (bitte ins Repository übernehmen)
+        uses: actions/upload-artifact@v4
+        with:
+          name: room-schemas
+          path: app/schemas/

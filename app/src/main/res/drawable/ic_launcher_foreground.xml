@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Schlichtes Einkaufslisten-Symbol: Notizblatt mit Häkchen und Linien (108dp Adaptive-Icon-Raster). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="@color/launcher_foreground"
+        android:pathData="M38,30h32a4,4 0,0 1,4 4v40a4,4 0,0 1,-4 4h-32a4,4 0,0 1,-4 -4v-40a4,4 0,0 1,4 -4z" />
+    <path
+        android:fillColor="@color/launcher_background"
+        android:pathData="M41,41l3,3l6,-6l2,2l-8,8l-5,-5z" />
+    <path
+        android:fillColor="@color/launcher_background"
+        android:pathData="M55,41h13v3h-13z" />
+    <path
+        android:fillColor="@color/launcher_background"
+        android:pathData="M41,53h27v3h-27z" />
+    <path
+        android:fillColor="@color/launcher_background"
+        android:pathData="M41,63h27v3h-27z" />
+</vector>
