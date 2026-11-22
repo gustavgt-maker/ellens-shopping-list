@@ -66,6 +66,14 @@ android {
         unitTests {
             isIncludeAndroidResources = true
             isReturnDefaultValues = false
+            all {
+                // Robolectric lädt Android-Laufzeitdateien selbst nach. Maven Central lehnt diese
+                // Downloads von Build-Servern teils ab; Googles offizieller Spiegel ist zuverlässig.
+                it.systemProperty(
+                    "robolectric.dependency.repo.url",
+                    "https://maven-central.storage-download.googleapis.com/maven2"
+                )
+            }
         }
     }
 
