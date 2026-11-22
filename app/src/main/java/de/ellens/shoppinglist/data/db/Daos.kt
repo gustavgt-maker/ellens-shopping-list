@@ -45,6 +45,15 @@ interface ShoppingListDao {
     @Query("UPDATE shopping_lists SET name = :name, last_used_at = :now WHERE id = :id")
     suspend fun rename(id: Long, name: String, now: Long): Int
 
+    @Query("UPDATE shopping_lists SET color_index = :colorIndex WHERE id = :id")
+    suspend fun setColor(id: Long, colorIndex: Int): Int
+
+    @Query("SELECT color_index FROM shopping_lists")
+    suspend fun usedColors(): List<Int>
+
+    @Query("SELECT * FROM shopping_lists WHERE id IN (:ids)")
+    fun observeListsByIds(ids: List<Long>): Flow<List<ShoppingListEntity>>
+
     @Query("UPDATE shopping_lists SET last_used_at = :now WHERE id = :id")
     suspend fun touch(id: Long, now: Long)
 
@@ -63,6 +72,9 @@ interface ShoppingItemDao {
 
     @Query("SELECT * FROM shopping_items WHERE list_id = :listId")
     fun observeItems(listId: Long): Flow<List<ShoppingItemEntity>>
+
+    @Query("SELECT * FROM shopping_items WHERE list_id IN (:listIds)")
+    fun observeItemsOfLists(listIds: List<Long>): Flow<List<ShoppingItemEntity>>
 
     @Query("SELECT * FROM shopping_items WHERE list_id = :listId ORDER BY position ASC, id ASC")
     suspend fun getItemsByPosition(listId: Long): List<ShoppingItemEntity>

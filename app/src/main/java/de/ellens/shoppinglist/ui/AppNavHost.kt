@@ -11,6 +11,8 @@ import de.ellens.shoppinglist.AppContainer
 import de.ellens.shoppinglist.data.settings.AppSettings
 import de.ellens.shoppinglist.ui.catalog.CatalogScreen
 import de.ellens.shoppinglist.ui.catalog.CatalogViewModel
+import de.ellens.shoppinglist.ui.combined.CombinedScreen
+import de.ellens.shoppinglist.ui.combined.CombinedViewModel
 import de.ellens.shoppinglist.ui.list.ListScreen
 import de.ellens.shoppinglist.ui.list.ListViewModel
 import de.ellens.shoppinglist.ui.overview.OverviewScreen
@@ -23,7 +25,9 @@ object Routes {
     const val LIST = "list/{listId}"
     const val SETTINGS = "settings"
     const val CATALOG = "catalog"
+    const val COMBINED = "combined/{listIds}"
     fun list(id: Long) = "list/$id"
+    fun combined(ids: List<Long>) = "combined/" + ids.joinToString(",")
 }
 
 /**
@@ -41,6 +45,7 @@ fun AppNavHost(container: AppContainer, settings: AppSettings) {
                 viewModel = vm,
                 keepScreenOn = settings.keepScreenOn,
                 onOpenList = { id -> nav.navigate(Routes.list(id)) { launchSingleTop = true } },
+                onOpenCombined = { ids -> nav.navigate(Routes.combined(ids)) { launchSingleTop = true } },
                 onOpenSettings = { nav.navigate(Routes.SETTINGS) { launchSingleTop = true } },
             )
         }
@@ -54,6 +59,17 @@ fun AppNavHost(container: AppContainer, settings: AppSettings) {
                 keepScreenOn = settings.keepScreenOn,
                 onBack = { nav.popBackStack(Routes.OVERVIEW, inclusive = false) },
                 onOpenSettings = { nav.navigate(Routes.SETTINGS) { launchSingleTop = true } },
+            )
+        }
+        composable(
+            route = Routes.COMBINED,
+            arguments = listOf(navArgument("listIds") { type = NavType.StringType }),
+        ) {
+            val vm: CombinedViewModel = viewModel(factory = CombinedViewModel.factory(container))
+            CombinedScreen(
+                viewModel = vm,
+                keepScreenOn = settings.keepScreenOn,
+                onBack = { nav.popBackStack(Routes.OVERVIEW, inclusive = false) },
             )
         }
         composable(Routes.SETTINGS) {

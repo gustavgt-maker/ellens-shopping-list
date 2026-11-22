@@ -1,6 +1,7 @@
 package de.ellens.shoppinglist.data.backup
 
 import androidx.room.withTransaction
+import de.ellens.shoppinglist.core.ListColors
 import de.ellens.shoppinglist.core.NameNormalizer
 import de.ellens.shoppinglist.data.db.AppDatabase
 import de.ellens.shoppinglist.data.db.CatalogItemEntity
@@ -63,7 +64,9 @@ class BackupManager(
             appVersionName = appVersionName,
             appVersionCode = appVersionCode,
             databaseVersion = AppDatabase.VERSION,
-            lists = lists.map { BackupList(it.id, it.name, it.createdAt, it.lastUsedAt, it.scrollIndex, it.scrollOffset) },
+            lists = lists.map {
+                BackupList(it.id, it.name, it.createdAt, it.lastUsedAt, it.scrollIndex, it.scrollOffset, it.colorIndex)
+            },
             items = items.map {
                 BackupItem(it.id, it.listId, it.name, it.quantity, it.isDone, it.position, it.doneAt, it.createdAt)
             },
@@ -172,6 +175,7 @@ class BackupManager(
                         lastUsedAt = it.lastUsedAt,
                         scrollIndex = it.scrollIndex.coerceAtLeast(0),
                         scrollOffset = it.scrollOffset.coerceAtLeast(0),
+                        colorIndex = it.colorIndex.takeIf { c -> ListColors.isValid(c) } ?: 0,
                     )
                 })
                 db.itemDao().insertAll(backup.items.map {

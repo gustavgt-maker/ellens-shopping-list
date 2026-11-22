@@ -3,6 +3,7 @@
 package de.ellens.shoppinglist.ui.list
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -155,7 +156,7 @@ fun SwipeToDeleteItem(
             initialValue = SwipeToDismissBoxValue.Settled,
             density = density,
             confirmValueChange = { value ->
-                if (value != SwipeToDismissBoxValue.Settled) {
+                if (value == SwipeToDismissBoxValue.EndToStart) {
                     currentOnDelete()
                     true
                 } else {
@@ -168,6 +169,9 @@ fun SwipeToDeleteItem(
     SwipeToDismissBox(
         state = state,
         modifier = modifier,
+        // Nur von rechts nach links wischen löscht (versehentliches Löschen vermeiden).
+        enableDismissFromStartToEnd = false,
+        enableDismissFromEndToStart = true,
         backgroundContent = { DeleteBackground(state) },
     ) {
         content()
@@ -193,7 +197,9 @@ private fun DeleteBackground(state: SwipeToDismissBoxState) {
 }
 
 /**
- * Kompakte Artikelzeile. Antippen der Text-Fläche schaltet erledigt/offen um; Stift öffnet die
+ * Kompakte Artikelzeile. [containerColor] färbt die Zeile (Listenfarbe); [listLabel] zeigt in der
+ * Gesamtansicht zusätzlich den Listennamen (Farbe allein wäre nicht barrierefrei).
+ * Antippen der Text-Fläche schaltet erledigt/offen um; Stift öffnet die
  * Bearbeitung; der Griff links dient ausschließlich dem Verschieben.
  */
 @Composable
@@ -204,6 +210,9 @@ fun ItemRow(
     onToggle: () -> Unit,
     onEdit: () -> Unit,
     modifier: Modifier = Modifier,
+    containerColor: Color = Color.Unspecified,
+    showLeadingSlot: Boolean = true,
+    listLabel: String? = null,
 ) {
     val extra = LocalExtraColors.current
     val scheme = MaterialTheme.colorScheme
@@ -216,11 +225,19 @@ fun ItemRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(if (isDragging) scheme.surfaceContainerHighest else scheme.surface)
+            .background(
+                when {
+                    isDragging -> scheme.surfaceContainerHighest
+                    containerColor != Color.Unspecified -> containerColor
+                    else -> scheme.surface
+                }
+            )
             .heightIn(min = 48.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (dragHandleModifier != null) {
+        if (!showLeadingSlot) {
+            Spacer(Modifier.width(12.dp))
+        } else if (dragHandleModifier != null) {
             Box(
                 modifier = dragHandleModifier
                     .size(44.dp)
@@ -246,13 +263,23 @@ fun ItemRow(
                 .padding(vertical = 6.dp, horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = item.name,
-                color = textColor,
-                textDecoration = decoration,
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.weight(1f),
-            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = item.name,
+                    color = textColor,
+                    textDecoration = decoration,
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                if (listLabel != null) {
+                    Text(
+                        text = listLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
             if (item.quantity.isNotBlank()) {
                 Text(
                     text = item.quantity,
@@ -445,6 +472,7 @@ fun ListSwitcherBar(
 fun EditItemDialog(
     item: ShoppingItemEntity,
     onSave: suspend (name: String, quantity: String) -> String?,
+    onDelete: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     var name by rememberSaveable(item.id, stateSaver = TextFieldValue.Saver) {
@@ -490,7 +518,12 @@ fun EditItemDialog(
             }
         },
         confirmButton = { TextButton(onClick = save, enabled = name.text.isNotBlank()) { Text("Speichern") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Abbrechen") } },
+        dismissButton = {
+            Row {
+                TextButton(onClick = onDelete) { Text("Löschen", color = MaterialTheme.colorScheme.error) }
+                TextButton(onClick = onDismiss) { Text("Abbrechen") }
+            }
+        },
     )
     LaunchedEffect(Unit) { focus.requestFocus() }
 }
@@ -508,3 +541,42 @@ fun EmptyListHint(modifier: Modifier = Modifier) {
 
 @Composable
 fun HorizontalGap(width: Int) = Spacer(Modifier.width(width.dp))
+
+/** Auswahl, in welche Liste ein neuer Artikel in der Gesamtansicht kommt. */
+@Composable
+fun TargetListSelector(
+    lists: List<ShoppingListEntity>,
+    selectedId: Long,
+    onSelect: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val extra = LocalExtraColors.current
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        modifier = modifier.fillMaxWidth().padding(start = 12.dp, end = 8.dp, top = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text("Neu in:", style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            items(lists, key = { it.id }) { l ->
+                val selected = l.id == selectedId
+                FilterChip(
+                    selected = selected,
+                    onClick = { onSelect(l.id) },
+                    label = { Text(l.name, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 140.dp)) },
+                    leadingIcon = if (selected) {
+                        { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                    } else null,
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = extra.listTint(l.colorIndex, scheme.surface),
+                        selectedContainerColor = extra.listTint(l.colorIndex, scheme.secondaryContainer),
+                        selectedLabelColor = scheme.onSurface,
+                        selectedLeadingIconColor = scheme.onSurface,
+                    ),
+                    border = if (selected) BorderStroke(2.dp, scheme.primary) else null,
+                )
+            }
+        }
+    }
+}

@@ -3,6 +3,7 @@ package de.ellens.shoppinglist.data.repo
 import android.database.sqlite.SQLiteConstraintException
 import androidx.room.withTransaction
 import de.ellens.shoppinglist.core.ItemOrdering
+import de.ellens.shoppinglist.core.ListColors
 import de.ellens.shoppinglist.core.NameNormalizer
 import de.ellens.shoppinglist.data.db.AppDatabase
 import de.ellens.shoppinglist.data.db.CatalogItemEntity
@@ -46,13 +47,40 @@ class ShoppingRepository(
 
     suspend fun getList(id: Long): ShoppingListEntity? = listDao.getList(id)
 
-    /** @return ID der neuen Liste oder null bei leerem Namen. */
-    suspend fun createList(rawName: String): Long? {
+    fun observeListsByIds(ids: List<Long>): Flow<List<ShoppingListEntity>> = listDao.observeListsByIds(ids)
+    fun observeItemsOfLists(ids: List<Long>): Flow<List<ShoppingItemEntity>> = itemDao.observeItemsOfLists(ids)
+
+    /** Vorschlag für die Farbe einer neuen Liste (am seltensten verwendete). */
+    suspend fun suggestColorForNewList(): Int = ListColors.suggestFor(listDao.usedColors())
+
+    /**
+     * @param colorIndex gewünschte Farbe; null = automatisch die am seltensten verwendete.
+     * @return ID der neuen Liste oder null bei leerem Namen.
+     */
+    suspend fun createList(rawName: String, colorIndex: Int? = null): Long? {
         if (!NameNormalizer.isValidName(rawName)) return null
-        val now = clock()
-        return listDao.insert(
-            ShoppingListEntity(name = NameNormalizer.clean(rawName), createdAt = now, lastUsedAt = now)
-        )
+        return db.withTransaction {
+            val now = clock()
+            val color = colorIndex?.takeIf { ListColors.isValid(it) } ?: ListColors.suggestFor(listDao.usedColors())
+            listDao.insert(
+                ShoppingListEntity(
+                    name = NameNormalizer.clean(rawName),
+                    createdAt = now,
+                    lastUsedAt = now,
+                    colorIndex = color,
+                )
+            )
+        }
+    }
+
+    /** Name und Farbe einer Liste ändern. */
+    suspend fun updateList(id: Long, rawName: String, colorIndex: Int): Boolean {
+        if (!NameNormalizer.isValidName(rawName) || !ListColors.isValid(colorIndex)) return false
+        return db.withTransaction {
+            val renamed = listDao.rename(id, NameNormalizer.clean(rawName), clock()) > 0
+            if (renamed) listDao.setColor(id, colorIndex)
+            renamed
+        }
     }
 
     suspend fun renameList(id: Long, rawName: String): Boolean {

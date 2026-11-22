@@ -25,11 +25,15 @@ class OverviewViewModel(
         .map<List<ListWithCounts>, List<ListWithCounts>?> { it }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    fun createList(name: String, onCreated: (Long) -> Unit) = viewModelScope.launch {
-        repo.createList(name)?.let(onCreated)
+    fun createList(name: String, colorIndex: Int, onCreated: (Long) -> Unit) = viewModelScope.launch {
+        repo.createList(name, colorIndex)?.let(onCreated)
     }
 
-    fun renameList(id: Long, name: String) = viewModelScope.launch { repo.renameList(id, name) }
+    fun updateList(id: Long, name: String, colorIndex: Int) = viewModelScope.launch {
+        repo.updateList(id, name, colorIndex)
+    }
+
+    suspend fun suggestColor(): Int = repo.suggestColorForNewList()
 
     fun deleteList(id: Long) = viewModelScope.launch { repo.deleteList(id) }
 

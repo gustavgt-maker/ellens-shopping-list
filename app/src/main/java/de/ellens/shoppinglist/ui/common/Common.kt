@@ -18,6 +18,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -111,3 +115,15 @@ fun ConfirmDestructiveDialog(
 
 @Composable
 fun SectionSpacer() = Spacer(Modifier.height(8.dp))
+
+/**
+ * Jede Berührung dieses Bereichs (Antippen, Scrollen, Ziehen) ruft [onTouch] auf – z. B. um
+ * die Tastatur zu schließen. Die Berührung wird dabei nicht abgefangen; Antippen, Scrollen
+ * und Drag & Drop funktionieren unverändert weiter.
+ */
+fun Modifier.dismissKeyboardOnTouch(onTouch: () -> Unit): Modifier = pointerInput(Unit) {
+    awaitEachGesture {
+        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        onTouch()
+    }
+}

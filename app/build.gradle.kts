@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.room)
 }
 
 android {
@@ -15,8 +16,8 @@ android {
         // minSdk 26 (Android 8.0): java.time ohne Desugaring, variable Schriften, ~97 % der Geräte.
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -63,9 +64,12 @@ android {
     }
 }
 
-ksp {
+room {
     // Room-Schemas werden versioniert abgelegt, damit künftige Migrationen geprüft werden können.
-    arg("room.schemaLocation", "$projectDir/schemas")
+    schemaDirectory("$projectDir/schemas")
+}
+
+ksp {
     arg("room.generateKotlin", "true")
 }
 

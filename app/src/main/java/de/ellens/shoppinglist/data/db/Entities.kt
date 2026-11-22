@@ -16,6 +16,8 @@ data class ShoppingListEntity(
     @ColumnInfo(name = "last_used_at") val lastUsedAt: Long,
     @ColumnInfo(name = "scroll_index", defaultValue = "0") val scrollIndex: Int = 0,
     @ColumnInfo(name = "scroll_offset", defaultValue = "0") val scrollOffset: Int = 0,
+    /** Dezente Hintergrundfarbe der Liste, Index in [de.ellens.shoppinglist.core.ListColors]. 0 = keine. */
+    @ColumnInfo(name = "color_index", defaultValue = "0") val colorIndex: Int = 0,
 )
 
 @Entity(

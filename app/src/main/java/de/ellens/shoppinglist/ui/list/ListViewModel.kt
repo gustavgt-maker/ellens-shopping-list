@@ -149,6 +149,9 @@ class ListViewModel(
     }
 
     fun renameCurrentList(name: String) = viewModelScope.launch { repo.renameList(currentListId.value, name) }
+    fun updateCurrentList(name: String, colorIndex: Int) = viewModelScope.launch {
+        repo.updateList(currentListId.value, name, colorIndex)
+    }
     fun clearCurrentList() = viewModelScope.launch { repo.clearList(currentListId.value) }
 
     /** Löscht die aktuelle Liste; [onDeleted] wird danach aufgerufen (Rückkehr zur Übersicht). */

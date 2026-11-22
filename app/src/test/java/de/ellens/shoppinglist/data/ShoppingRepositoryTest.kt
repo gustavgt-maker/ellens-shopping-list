@@ -230,6 +230,31 @@ class ShoppingRepositoryTest {
         assertNull(repo.deleteItem(id))
     }
 
+    @Test fun lists_getDistinctColorsAndCanBeChanged() = runBlocking {
+        val a = repo.createList("Privat")!!
+        val b = repo.createList("Arbeit")!!
+        val c = repo.createList("Drogerie", colorIndex = 0)!!
+        assertEquals(1, repo.getList(a)!!.colorIndex)
+        assertEquals(2, repo.getList(b)!!.colorIndex)
+        assertEquals(0, repo.getList(c)!!.colorIndex)
+        assertTrue(repo.updateList(a, "Privat neu", 4))
+        assertEquals(4, repo.getList(a)!!.colorIndex)
+        assertEquals("Privat neu", repo.getList(a)!!.name)
+        assertFalse(repo.updateList(a, "X", 99))
+        assertFalse(repo.updateList(a, " ", 2))
+    }
+
+    @Test fun combinedLists_observeItemsOfSeveralLists() = runBlocking {
+        val a = repo.createList("Privat")!!
+        val b = repo.createList("Arbeit")!!
+        val other = repo.createList("Andere")!!
+        add(a, "Milch", "1"); add(b, "Milch", "3"); add(other, "Käse")
+        val items = repo.observeItemsOfLists(listOf(a, b)).first()
+        assertEquals(2, items.size)
+        assertEquals(setOf("1", "3"), items.map { it.quantity }.toSet())
+        assertEquals(setOf(a, b), repo.observeListsByIds(listOf(a, b)).first().map { it.id }.toSet())
+    }
+
     @Test fun scrollPosition_isStored() = runBlocking {
         val list = repo.createList("L")!!
         repo.saveScrollPosition(list, 12, 34)

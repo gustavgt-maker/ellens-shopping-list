@@ -12,6 +12,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -65,6 +66,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.contentDescription
@@ -83,8 +86,11 @@ import de.ellens.shoppinglist.data.db.ShoppingItemEntity
 import de.ellens.shoppinglist.data.db.ShoppingListEntity
 import de.ellens.shoppinglist.ui.common.ConfirmDestructiveDialog
 import de.ellens.shoppinglist.ui.common.Haptics
+import de.ellens.shoppinglist.ui.common.dismissKeyboardOnTouch
+import de.ellens.shoppinglist.ui.common.ListEditDialog
 import de.ellens.shoppinglist.ui.common.NameInputDialog
 import de.ellens.shoppinglist.ui.common.rememberHaptics
+import de.ellens.shoppinglist.ui.theme.LocalExtraColors
 import de.ellens.shoppinglist.ui.theme.LocalReduceMotion
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -108,6 +114,13 @@ fun ListScreen(
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val haptics = rememberHaptics()
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    // Tastatur schließen, sobald nicht mehr im Eingabefeld gearbeitet wird.
+    val dismissKeyboard: () -> Unit = {
+        focusManager.clearFocus()
+        keyboard?.hide()
+    }
 
     var name by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue("")) }
     var quantity by rememberSaveable { mutableStateOf("") }
@@ -170,20 +183,23 @@ fun ListScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
-            Column(Modifier.windowInsetsPadding(WindowInsets.statusBars)) {
-                KeepScreenOnToggle(enabled = keepScreenOn, onChange = { haptics.tick(); viewModel.setKeepScreenOn(it) })
-                ListHeader(
-                    title = currentList?.name ?: "",
-                    lists = lists,
-                    currentId = currentId,
-                    onSwitch = { id -> haptics.tick(); viewModel.switchTo(id) },
-                    onBack = onBack,
-                    onRename = { showRename = true },
-                    onClear = { showClear = true },
-                    onDelete = { showDelete = true },
-                    onOpenSettings = onOpenSettings,
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            // Undurchsichtig, damit gescrollte Artikel nicht unter der Kopfzeile durchscheinen.
+            Surface(color = MaterialTheme.colorScheme.surface) {
+                Column(Modifier.windowInsetsPadding(WindowInsets.statusBars)) {
+                    KeepScreenOnToggle(enabled = keepScreenOn, onChange = { haptics.tick(); dismissKeyboard(); viewModel.setKeepScreenOn(it) })
+                    ListHeader(
+                        title = currentList?.name ?: "",
+                        lists = lists,
+                        currentId = currentId,
+                        onSwitch = { id -> haptics.tick(); dismissKeyboard(); viewModel.switchTo(id) },
+                        onBack = { dismissKeyboard(); onBack() },
+                        onRename = { dismissKeyboard(); showRename = true },
+                        onClear = { dismissKeyboard(); showClear = true },
+                        onDelete = { dismissKeyboard(); showDelete = true },
+                        onOpenSettings = onOpenSettings,
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
             }
         },
         bottomBar = {
@@ -214,7 +230,7 @@ fun ListScreen(
                         ListSwitcherBar(
                             lists = lists,
                             currentId = currentId,
-                            onSelect = { id -> haptics.tick(); viewModel.switchTo(id) },
+                            onSelect = { id -> haptics.tick(); dismissKeyboard(); viewModel.switchTo(id) },
                         )
                     }
                 }
@@ -243,11 +259,12 @@ fun ListScreen(
                         haptics = haptics,
                         pendingScrollToId = pendingScrollToId,
                         onScrollHandled = { pendingScrollToId = null },
-                        onToggle = { id -> haptics.tick(); viewModel.toggleDone(id) },
-                        onEdit = { id -> editItemId = id },
-                        onDelete = { id -> haptics.strong(); viewModel.deleteItem(id) },
+                        onToggle = { id -> haptics.tick(); dismissKeyboard(); viewModel.toggleDone(id) },
+                        onEdit = { id -> dismissKeyboard(); editItemId = id },
+                        onDelete = { id -> haptics.strong(); dismissKeyboard(); viewModel.deleteItem(id) },
                         onMove = { id, index -> viewModel.moveOpenItem(id, index) },
                         onSaveScroll = viewModel::saveScroll,
+                        onUserInteraction = dismissKeyboard,
                     )
                 }
             }
@@ -262,6 +279,11 @@ fun ListScreen(
             EditItemDialog(
                 item = item,
                 onSave = { n, q -> viewModel.editItem(id, n, q) },
+                onDelete = {
+                    editItemId = null
+                    haptics.strong()
+                    viewModel.deleteItem(id)
+                },
                 onDismiss = { editItemId = null },
             )
         } else if (ready != null) {
@@ -269,10 +291,12 @@ fun ListScreen(
         }
     }
     if (showRename && currentList != null) {
-        NameInputDialog(
-            title = "Liste umbenennen",
-            initial = currentList.name,
-            onConfirm = { n -> viewModel.renameCurrentList(n); showRename = false },
+        ListEditDialog(
+            title = "Liste bearbeiten",
+            initialName = currentList.name,
+            initialColor = currentList.colorIndex,
+            confirmLabel = "Speichern",
+            onConfirm = { n, c -> viewModel.updateCurrentList(n, c); showRename = false },
             onDismiss = { showRename = false },
         )
     }
@@ -395,7 +419,7 @@ private fun ListHeader(
                 Icon(Icons.Filled.MoreVert, contentDescription = "Listenoptionen")
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                DropdownMenuItem(text = { Text("Liste umbenennen") }, onClick = { menuOpen = false; onRename() })
+                DropdownMenuItem(text = { Text("Name und Farbe ändern") }, onClick = { menuOpen = false; onRename() })
                 DropdownMenuItem(
                     text = { Text("Liste leeren", color = MaterialTheme.colorScheme.error) },
                     onClick = { menuOpen = false; onClear() },
@@ -423,9 +447,12 @@ private fun ListContent(
     onDelete: (Long) -> Unit,
     onMove: (itemId: Long, toIndex: Int) -> Unit,
     onSaveScroll: (listId: Long, index: Int, offset: Int) -> Unit,
+    onUserInteraction: () -> Unit,
 ) {
     val listId = content.list.id
     val reduceMotion = LocalReduceMotion.current
+    val tint = LocalExtraColors.current.listTint(content.list.colorIndex, MaterialTheme.colorScheme.surface)
+    val latestOnUserInteraction by rememberUpdatedState(onUserInteraction)
 
     // Scrollposition: beim ersten Öffnen aus der Datenbank, danach über den Instanzzustand.
     val listState = rememberSaveable(listId, saver = LazyListState.Saver) {
@@ -491,7 +518,10 @@ private fun ListContent(
     val layoutDirection = LocalLayoutDirection.current
     LazyColumn(
         state = listState,
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(tint)
+            .dismissKeyboardOnTouch { latestOnUserInteraction() },
         contentPadding = PaddingValues(
             start = padding.calculateStartPadding(layoutDirection),
             end = padding.calculateEndPadding(layoutDirection),
@@ -506,6 +536,7 @@ private fun ListContent(
             ReorderableItem(reorderState, key = item.id) { isDragging ->
                 val handle = Modifier.draggableHandle(
                     onDragStarted = {
+                        latestOnUserInteraction()
                         if (!useLocal) {
                             openLocal = displayedOpen
                             useLocal = true
@@ -519,15 +550,15 @@ private fun ListContent(
                         if (index >= 0) onMove(item.id, index)
                     },
                 )
-                SwipeToDeleteItem(item = item, onDelete = { onDelete(item.id) }) {
-                    ItemRow(
-                        item = item,
-                        isDragging = isDragging,
-                        dragHandleModifier = handle,
-                        onToggle = { onToggle(item.id) },
-                        onEdit = { onEdit(item.id) },
-                    )
-                }
+                // Offene Artikel lassen sich bewusst NICHT per Wischen löschen (nur über Bearbeiten).
+                ItemRow(
+                    item = item,
+                    isDragging = isDragging,
+                    dragHandleModifier = handle,
+                    onToggle = { onToggle(item.id) },
+                    onEdit = { onEdit(item.id) },
+                    containerColor = tint,
+                )
             }
         }
         if (content.done.isNotEmpty()) {
@@ -549,6 +580,7 @@ private fun ListContent(
                         dragHandleModifier = null,
                         onToggle = { onToggle(item.id) },
                         onEdit = { onEdit(item.id) },
+                        containerColor = tint,
                     )
                 }
             }

@@ -36,6 +36,8 @@ data class BackupList(
     val lastUsedAt: Long,
     val scrollIndex: Int = 0,
     val scrollOffset: Int = 0,
+    /** Ab App-Version 1.1; ältere Sicherungen ohne Feld erhalten 0 (keine Farbe). */
+    val colorIndex: Int = 0,
 )
 
 @Serializable

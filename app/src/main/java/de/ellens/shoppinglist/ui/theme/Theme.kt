@@ -85,17 +85,51 @@ private val DarkColors = darkColorScheme(
 
 /** Zusätzliche, app-spezifische Farben. */
 @Immutable
-data class ExtraColors(val doneRed: Color, val keepScreenOnActive: Color, val onKeepScreenOnActive: Color)
+data class ExtraColors(
+    val doneRed: Color,
+    val keepScreenOnActive: Color,
+    val onKeepScreenOnActive: Color,
+    /** Dezente Listenfarben, Index wie [de.ellens.shoppinglist.core.ListColors]; 0 = keine. */
+    val listTints: List<Color>,
+) {
+    /** Hintergrund für eine Liste; bei „keine Farbe“ oder ungültigem Index die normale Fläche. */
+    fun listTint(index: Int, fallback: Color): Color =
+        if (index <= 0 || index >= listTints.size) fallback else listTints[index]
+}
+
+// Sehr helle Pastelltöne (Notizblock-Anmutung). Reihenfolge: keine, Gelb, Grün, Rosa, Blau, Flieder, Pfirsich.
+private val LightListTints = listOf(
+    Color.Unspecified,
+    Color(0xFFFFF7CC),
+    Color(0xFFE6F4DE),
+    Color(0xFFFCE4EC),
+    Color(0xFFE1EEFA),
+    Color(0xFFEFE6F7),
+    Color(0xFFFDEBDC),
+)
+
+// Im dunklen Design gedeckte, dunkle Varianten, damit Text kontrastreich bleibt.
+private val DarkListTints = listOf(
+    Color.Unspecified,
+    Color(0xFF39341C),
+    Color(0xFF223322),
+    Color(0xFF3A2229),
+    Color(0xFF1F2E3B),
+    Color(0xFF2D2638),
+    Color(0xFF3A2B1E),
+)
 
 private val LightExtra = ExtraColors(
     doneRed = Color(0xFFC62828),
     keepScreenOnActive = Color(0xFF2B2B2B),
     onKeepScreenOnActive = Color(0xFFFFFFFF),
+    listTints = LightListTints,
 )
 private val DarkExtra = ExtraColors(
     doneRed = Color(0xFFFF6B6B),
     keepScreenOnActive = Color(0xFFE6E6E6),
     onKeepScreenOnActive = Color(0xFF121212),
+    listTints = DarkListTints,
 )
 
 val LocalExtraColors = staticCompositionLocalOf { LightExtra }
