@@ -22,14 +22,15 @@ Vollständig offline: keine Internetberechtigung, keine Cloud, keine Werbung, ke
 
 ## Funktionen
 
-- Beliebig viele Listen; Übersicht nach letzter Verwendung mit Anzahl gesamt/offen
+- Beliebig viele Listen mit dezenter Pastellfarbe; Übersicht nach letzter Verwendung mit Anzahl gesamt/offen
+- „Gemeinsam einkaufen“: mehrere Listen zusammen, gleiche Artikel als Block, jede Zeile in der Farbe ihrer Liste
 - Wechsel zwischen Listen per Wischen über die Kopfzeile oder über die untere Listenleiste
 - Großer Schalter „Bildschirm bleibt an“ (wirkt nur, solange die App sichtbar ist)
 - Schnelle Eingabe: Artikel + optionale Menge, Eingabetaste fügt hinzu, Felder leeren sich, Tastatur bleibt offen
 - Lernende Artikeldatenbank mit alphabetischen Vorschlägen und eigener Verwaltung
 - Dublettenprüfung (Groß-/Kleinschreibung und Leerzeichen egal), zusätzlich per Datenbank-Index abgesichert
 - Antippen = erledigt (rot durchgestrichen, wandert nach unten); erneut antippen = zurück an alte Position
-- Drag & Drop am Griff ≡, Wischen auf der Zeile löscht – mit „Rückgängig“
+- Drag & Drop am Griff ≡; erledigte Artikel per Wischen nach links löschen, offene über den Stift – jeweils mit „Rückgängig“
 - Liste leeren / Liste löschen mit Sicherheitsabfrage
 - Hell / Dunkel / Automatisch, vier Schriftarten, fünf Schriftgrößen, Haptik abschaltbar
 - Tägliche automatische Sicherung (3 Stände), manuelle Sicherung, Export/Import über den Android-Dateidialog
@@ -87,7 +88,9 @@ vor; ein Update ist möglich, aber nicht nötig.
 1. APK auf das Gerät kopieren (USB, eigene Dateiablage).
 2. Datei antippen. Android fragt einmalig nach der Erlaubnis „Unbekannte Apps installieren“
    für die verwendete Datei-App – erlauben.
-3. Die Debug-Variante hat die Paket-ID `de.ellens.shoppinglist.debug` und kann parallel zu einer
+3. Updates installieren sich direkt über die vorhandene App (fester Signaturschlüssel
+   `app/debug.keystore` ab Version 1.1). Daten bleiben erhalten.
+4. Die Debug-Variante hat die Paket-ID `de.ellens.shoppinglist.debug` und kann parallel zu einer
    späteren Release-Version installiert sein. Daten wandern zwischen beiden über Export/Import.
 
 Für eine dauerhafte Release-Version: in Android Studio *Build → Generate Signed App Bundle/APK*
