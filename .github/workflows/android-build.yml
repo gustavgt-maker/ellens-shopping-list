@@ -36,6 +36,10 @@ jobs:
       - name: Debug-APK bauen
         run: ./gradlew --no-daemon assembleDebug
 
+      - name: Room-Schema ins Log schreiben
+        if: always()
+        run: find app/schemas -name "*.json" -print -exec cat {} \; || true
+
       - name: Testberichte hochladen
         if: always()
         uses: actions/upload-artifact@v4
