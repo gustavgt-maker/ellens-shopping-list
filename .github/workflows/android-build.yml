@@ -30,8 +30,17 @@ jobs:
       - name: Android SDK prüfen
         run: echo "ANDROID_HOME=$ANDROID_HOME" && ls "$ANDROID_HOME/platforms" | tail -5
 
+      # Robolectric lädt beim ersten Testlauf Android-Laufzeitdateien von Maven Central.
+      # Zwischenspeichern vermeidet sporadische Download-Fehler.
+      - name: Robolectric-Dateien zwischenspeichern
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ hashFiles('gradle/libs.versions.toml') }}
+
       - name: Unit-Tests ausführen
-        run: ./gradlew --no-daemon testDebugUnitTest
+        # Ein zweiter Versuch fängt reine Netzwerkfehler beim Robolectric-Download ab.
+        run: ./gradlew --no-daemon testDebugUnitTest || ./gradlew --no-daemon testDebugUnitTest
 
       - name: Debug-APK bauen
         run: ./gradlew --no-daemon assembleDebug
