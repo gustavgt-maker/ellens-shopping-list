@@ -22,6 +22,18 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        // Fester Schlüssel für alle Debug-Builds (lokal und GitHub Actions). Ohne ihn erzeugt
+        // jeder Build-Rechner einen eigenen Zufallsschlüssel – Android verweigert dann das
+        // Update über eine installierte Version, und die App müsste neu installiert werden.
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true

@@ -163,6 +163,11 @@ class BackupManager(
             )
             store.rotate(BackupKind.PRE_IMPORT, BackupStore.KEEP_PRE_IMPORT)
 
+            // Sicherungen aus Version 1.0 kennen noch keine Listenfarben: dann wie bei der
+            // Datenbank-Migration nacheinander Farben 1–6 vergeben.
+            val assignColors = backup.appVersionCode < 2 && backup.lists.all { it.colorIndex == 0 }
+            val colorRank = backup.lists.map { it.id }.sorted().withIndex().associate { (i, id) -> id to (i % 6) + 1 }
+
             db.withTransaction {
                 db.itemDao().deleteAll()
                 db.listDao().deleteAll()
@@ -175,7 +180,8 @@ class BackupManager(
                         lastUsedAt = it.lastUsedAt,
                         scrollIndex = it.scrollIndex.coerceAtLeast(0),
                         scrollOffset = it.scrollOffset.coerceAtLeast(0),
-                        colorIndex = it.colorIndex.takeIf { c -> ListColors.isValid(c) } ?: 0,
+                        colorIndex = if (assignColors) colorRank.getValue(it.id)
+                        else it.colorIndex.takeIf { c -> ListColors.isValid(c) } ?: 0,
                     )
                 })
                 db.itemDao().insertAll(backup.items.map {

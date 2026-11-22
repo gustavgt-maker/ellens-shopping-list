@@ -54,7 +54,7 @@ class BackupTest {
         val dir = TestSupport.tempDir("backup")
         settings = SettingsRepository(TestSupport.newDataStore(File(dir, "s.preferences_pb"), scope))
         backupDir = File(dir, "backups")
-        manager = BackupManager(db, settings, BackupStore(backupDir), "test", 1)
+        manager = BackupManager(db, settings, BackupStore(backupDir), "test", 2)
     }
 
     @After fun tearDown() {
@@ -200,6 +200,26 @@ class BackupTest {
         val store = BackupStore(backupDir)
         assertEquals(3, store.list(BackupKind.MANUAL).size)
         assertEquals("Automatische Sicherungen unberührt", 1, store.list(BackupKind.AUTO).size)
+    }
+
+    @Test fun backupFromVersion10_getsListColorsOnImport() = runBlocking {
+        seed()
+        val snapshot = manager.createSnapshot()
+        // So sah eine Sicherung aus App-Version 1.0 aus: kein Farbfeld (-> 0), appVersionCode 1
+        val old = snapshot.copy(appVersionCode = 1, lists = snapshot.lists.map { it.copy(colorIndex = 0) })
+        val json = BackupCodec.encode(old).replace(Regex(",\\s*\"colorIndex\": 0"), "")
+        assertFalse("Testdatei enthält kein Farbfeld", json.contains("colorIndex"))
+        val check = manager.check(bytesOf(json))
+        assertTrue(check is ImportCheck.Ready)
+        manager.restore((check as ImportCheck.Ready).backup)
+        assertEquals(listOf(1, 2), db.listDao().getAllLists().sortedBy { it.id }.map { it.colorIndex })
+    }
+
+    @Test fun backupFromCurrentVersion_keepsChosenColors() = runBlocking {
+        val list = seed()
+        repo.updateList(list, "Wocheneinkauf", 5)
+        manager.restore(manager.createSnapshot())
+        assertEquals(5, db.listDao().getList(list)!!.colorIndex)
     }
 
     @Test fun backupFile_containsEverything() = runBlocking {
