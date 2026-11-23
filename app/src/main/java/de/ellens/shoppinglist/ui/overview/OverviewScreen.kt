@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
@@ -71,6 +72,7 @@ fun OverviewScreen(
     keepScreenOn: Boolean,
     onOpenList: (Long) -> Unit,
     onOpenCombined: (List<Long>) -> Unit,
+    onOpenImport: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
     val lists by viewModel.lists.collectAsStateWithLifecycle()
@@ -131,6 +133,15 @@ fun OverviewScreen(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(bottom = 96.dp),
             ) {
+                item(key = "import_hint") {
+                    TextButton(
+                        onClick = onOpenImport,
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                    ) {
+                        Icon(Icons.Filled.Email, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text("  Artikel aus Nachricht übernehmen")
+                    }
+                }
                 if (current.size >= 2) {
                     item(key = "combine_hint") {
                         TextButton(

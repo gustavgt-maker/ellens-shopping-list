@@ -1,5 +1,18 @@
 # Ellen's Shopping List – Anforderungsanalyse und Architektur
 
+## Leitlinie für alle Erweiterungen (festgelegt 23.11.2026)
+
+- **Keine kostenpflichtigen Dienste.**
+- **Alles läuft eigenständig bzw. selbst betrieben** (eigenes Gerät / eigener Server zu Hause), auch wenn das den Funktionsumfang minimal einschränkt.
+- **Keine Fremddienste für Analyse, Tracking, Werbung oder Cloud-Speicher** (z. B. kein Google Analytics, kein Firebase, keine Google-Cloud-Sicherung).
+- Bei mehreren Lösungswegen wird die selbst gehostete, quelloffene Variante gewählt (z. B. ntfy statt Firebase Cloud Messaging für Benachrichtigungen).
+- Fernzugriff von unterwegs über eine eigene WireGuard-VPN-Verbindung (z. B. über den Router, falls er das kann, oder selbst gehostetes Headscale) statt fremder Tunnel- oder Relay-Dienste.
+
+## Ausbaustufen „Einträge aus der Ferne“
+
+1. **Übernahme aus Nachrichten** (offline, ohne Server): Text per „Teilen“ oder Einfügen übernehmen, Artikel und Mengen erkennen, Vorschau, in gewählte Liste eintragen.
+2. **Gemeinsame Listen über eigenen Heimserver** (geplant, sobald das Gerät für Hausautomation steht): Synchronisierungsdienst + Weboberfläche (iPhone der Ehefrau, als Web-App auf dem Home-Bildschirm) + Benachrichtigung neuer Artikel über selbst gehostetes ntfy.
+
 ## Phase 1: Widersprüche, Probleme und getroffene Präzisierungen
 
 | # | Anforderung | Problem | Entscheidung |
@@ -42,14 +55,14 @@ Daten
 Reine Logik (ohne Android, voll testbar): core/NameNormalizer, SuggestionFilter, ItemOrdering
 ```
 
-### Datenmodell (Room, Version 1)
+### Datenmodell (Room, Version 2)
 
-- `shopping_lists(id, name, created_at, last_used_at, scroll_index, scroll_offset)`
+- `shopping_lists(id, name, created_at, last_used_at, scroll_index, scroll_offset, color_index)`
 - `shopping_items(id, list_id → shopping_lists.id ON DELETE CASCADE, name, normalized_name, quantity, is_done, position, done_at, created_at)`
   - eindeutiger Index `(list_id, normalized_name)` → keine Dubletten, auch nicht bei Doppel-Tipp
 - `catalog_items(id, name, normalized_name UNIQUE, created_at)` – unabhängig von Listen
 
-Migrationen: `Migrations.ALL` (aktuell leer). **Kein** `fallbackToDestructiveMigration` – ein Update löscht nie Daten.
+Migrationen: `Migrations.ALL` (1→2: Spalte `color_index`, vorhandene Listen erhalten Farben 1–6). **Kein** `fallbackToDestructiveMigration` – ein Update löscht nie Daten.
 
 ### Sortierung
 
@@ -67,7 +80,7 @@ Position = `Long` mit Abstand 1024. Verschieben setzt die Position zwischen die 
 | Bereich | Geste | Wirkung |
 |---|---|---|
 | Kopfzeile (Listenname) | horizontal wischen | vorherige/nächste Liste |
-| Artikelzeile | horizontal wischen | Artikel löschen (mit Rückgängig) |
+| Erledigte Artikelzeile | von rechts nach links wischen | Artikel löschen (mit Rückgängig); offene Artikel: Stift → Löschen |
 | Griff ≡ links | ziehen | Umsortieren |
 | Text der Zeile | antippen | erledigt/offen |
 | Stift rechts | antippen | bearbeiten |

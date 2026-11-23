@@ -137,6 +137,23 @@ class ShoppingRepository(
         }
     }
 
+    data class BatchResult(val added: Int, val duplicates: Int, val invalid: Int)
+
+    /** Fügt mehrere Artikel hinzu (Import aus Text). Dubletten werden übersprungen. */
+    suspend fun addItems(listId: Long, items: List<Pair<String, String>>): BatchResult {
+        var added = 0
+        var duplicates = 0
+        var invalid = 0
+        for ((name, quantity) in items) {
+            when (addItem(listId, name, quantity)) {
+                is AddItemResult.Added -> added++
+                AddItemResult.Duplicate -> duplicates++
+                AddItemResult.InvalidName, AddItemResult.ListMissing -> invalid++
+            }
+        }
+        return BatchResult(added, duplicates, invalid)
+    }
+
     /** Ändert nur Name und Menge – der Erledigt-Status und die Position bleiben unverändert. */
     suspend fun editItem(itemId: Long, rawName: String, rawQuantity: String): EditItemResult {
         if (!NameNormalizer.isValidName(rawName)) return EditItemResult.InvalidName

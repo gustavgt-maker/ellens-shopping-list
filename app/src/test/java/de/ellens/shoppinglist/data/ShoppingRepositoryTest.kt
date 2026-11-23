@@ -255,6 +255,17 @@ class ShoppingRepositoryTest {
         assertEquals(setOf(a, b), repo.observeListsByIds(listOf(a, b)).first().map { it.id }.toSet())
     }
 
+    @Test fun batchAdd_skipsDuplicatesAndLearnsCatalog() = runBlocking {
+        val list = repo.createList("L")!!
+        add(list, "Milch")
+        val r = repo.addItems(list, listOf("Brot" to "", "milch" to "2", "Eier" to "10", " " to ""))
+        assertEquals(2, r.added)
+        assertEquals(1, r.duplicates)
+        assertEquals(1, r.invalid)
+        assertEquals(listOf("Milch", "Brot", "Eier"), openNames(list))
+        assertEquals(3, catalog.observeAll().first().size)
+    }
+
     @Test fun scrollPosition_isStored() = runBlocking {
         val list = repo.createList("L")!!
         repo.saveScrollPosition(list, 12, 34)

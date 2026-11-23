@@ -20,6 +20,12 @@ class AppContainer(context: Context) {
     val shoppingRepository = ShoppingRepository(database)
     val catalogRepository = CatalogRepository(database)
     val settingsRepository = SettingsRepository(appContext.settingsDataStore)
+    /** Per „Teilen“ empfangener Text, bis der Import-Bildschirm ihn übernimmt. */
+    val shareInbox = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+
+    /** Ergebnis des letzten Text-Imports; die Listenansicht zeigt es einmal als Hinweis an. */
+    val importResult = kotlinx.coroutines.flow.MutableStateFlow<de.ellens.shoppinglist.ui.importtext.ImportDone?>(null)
+
     val backupManager = BackupManager(
         db = database,
         settings = settingsRepository,

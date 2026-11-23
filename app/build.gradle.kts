@@ -16,8 +16,8 @@ android {
         // minSdk 26 (Android 8.0): java.time ohne Desugaring, variable Schriften, ~97 % der Geräte.
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.1.1"
+        versionCode = 4
+        versionName = "1.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

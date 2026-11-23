@@ -1,5 +1,6 @@
 package de.ellens.shoppinglist
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.WindowManager
@@ -29,6 +30,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Nur beim echten Start auswerten, nicht bei einer Wiederherstellung (sonst doppelter Import).
+        if (savedInstanceState == null) handleShareIntent(intent)
         enableEdgeToEdge()
         setContent {
             val settings: AppSettings? by container.settingsRepository.settings
@@ -51,6 +54,18 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleShareIntent(intent)
+    }
+
+    /** Text, der aus einer anderen App (z. B. WhatsApp) an diese App geteilt wurde. */
+    private fun handleShareIntent(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_SEND) return
+        val text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
+        if (!text.isNullOrBlank()) container.shareInbox.value = text.take(20_000)
     }
 
     override fun onStart() {

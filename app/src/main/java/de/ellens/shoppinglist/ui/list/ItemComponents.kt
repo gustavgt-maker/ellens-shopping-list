@@ -549,6 +549,7 @@ fun TargetListSelector(
     selectedId: Long,
     onSelect: (Long) -> Unit,
     modifier: Modifier = Modifier,
+    label: String = "Neu in:",
 ) {
     val extra = LocalExtraColors.current
     val scheme = MaterialTheme.colorScheme
@@ -557,7 +558,7 @@ fun TargetListSelector(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Text("Neu in:", style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
+        Text(label, style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             items(lists, key = { it.id }) { l ->
                 val selected = l.id == selectedId

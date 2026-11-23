@@ -92,7 +92,9 @@ import de.ellens.shoppinglist.ui.common.NameInputDialog
 import de.ellens.shoppinglist.ui.common.rememberHaptics
 import de.ellens.shoppinglist.ui.theme.LocalExtraColors
 import de.ellens.shoppinglist.ui.theme.LocalReduceMotion
+import de.ellens.shoppinglist.ui.importtext.ImportDone
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
@@ -105,6 +107,8 @@ fun ListScreen(
     keepScreenOn: Boolean,
     onBack: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenImport: (listId: Long) -> Unit = {},
+    importResult: MutableStateFlow<ImportDone?>? = null,
 ) {
     val screenState by viewModel.screenState.collectAsStateWithLifecycle()
     val lists by viewModel.allLists.collectAsStateWithLifecycle()
@@ -154,6 +158,20 @@ fun ListScreen(
         }
     }
 
+    // Rückmeldung nach „Aus Nachricht übernehmen“.
+    LaunchedEffect(importResult) {
+        importResult?.collect { done ->
+            if (done != null) {
+                importResult.value = null
+                val text = buildString {
+                    append(if (done.added == 1) "1 Artikel übernommen" else "${done.added} Artikel übernommen")
+                    if (done.skipped > 0) append(" · ${done.skipped} schon vorhanden")
+                }
+                scope.launch { snackbar.showSnackbar(text) }
+            }
+        }
+    }
+
     if (screenState is ListScreenState.Missing) {
         LaunchedEffect(Unit) { onBack() }
     }
@@ -197,6 +215,7 @@ fun ListScreen(
                         onClear = { dismissKeyboard(); showClear = true },
                         onDelete = { dismissKeyboard(); showDelete = true },
                         onOpenSettings = onOpenSettings,
+                        onImport = { dismissKeyboard(); onOpenImport(currentId) },
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
@@ -351,6 +370,7 @@ private fun ListHeader(
     onClear: () -> Unit,
     onDelete: () -> Unit,
     onOpenSettings: () -> Unit,
+    onImport: () -> Unit,
 ) {
     val index = lists.indexOfFirst { it.id == currentId }
     val prev = lists.getOrNull(index - 1)
@@ -419,6 +439,7 @@ private fun ListHeader(
                 Icon(Icons.Filled.MoreVert, contentDescription = "Listenoptionen")
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(text = { Text("Aus Nachricht übernehmen") }, onClick = { menuOpen = false; onImport() })
                 DropdownMenuItem(text = { Text("Name und Farbe ändern") }, onClick = { menuOpen = false; onRename() })
                 DropdownMenuItem(
                     text = { Text("Liste leeren", color = MaterialTheme.colorScheme.error) },
