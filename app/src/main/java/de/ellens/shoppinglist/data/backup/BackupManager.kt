@@ -11,6 +11,7 @@ import de.ellens.shoppinglist.data.settings.AppFont
 import de.ellens.shoppinglist.data.settings.AppSettings
 import de.ellens.shoppinglist.data.settings.FontSizeStep
 import de.ellens.shoppinglist.data.settings.SettingsRepository
+import de.ellens.shoppinglist.data.settings.ShakeSensitivity
 import de.ellens.shoppinglist.data.settings.ThemeMode
 import de.ellens.shoppinglist.data.settings.enumOrDefault
 import kotlinx.coroutines.CoroutineDispatcher
@@ -78,6 +79,7 @@ class BackupManager(
                 hapticsEnabled = s.hapticsEnabled,
                 keepScreenOn = s.keepScreenOn,
                 lastOpenedListId = s.lastOpenedListId,
+                shakeSensitivity = s.shakeSensitivity.name,
             ),
         )
     }
@@ -218,6 +220,7 @@ class BackupManager(
                     hapticsEnabled = bs.hapticsEnabled,
                     keepScreenOn = bs.keepScreenOn,
                     lastOpenedListId = restoredLastList,
+                    shakeSensitivity = enumOrDefault(bs.shakeSensitivity, ShakeSensitivity.MEDIUM),
                 )
             )
         }

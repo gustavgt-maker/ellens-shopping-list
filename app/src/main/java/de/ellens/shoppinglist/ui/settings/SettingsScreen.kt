@@ -54,7 +54,15 @@ import de.ellens.shoppinglist.data.backup.StoredBackup
 import de.ellens.shoppinglist.data.settings.AppFont
 import de.ellens.shoppinglist.data.settings.AppSettings
 import de.ellens.shoppinglist.data.settings.FontSizeStep
+import de.ellens.shoppinglist.data.settings.ShakeSensitivity
 import de.ellens.shoppinglist.data.settings.ThemeMode
+import de.ellens.shoppinglist.ui.common.ShakeEffect
+import de.ellens.shoppinglist.ui.common.rememberHaptics
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import de.ellens.shoppinglist.ui.theme.fontFamilyFor
 import java.text.DateFormat
 import java.time.LocalDate
@@ -151,6 +159,20 @@ fun SettingsScreen(
                 onChange = viewModel::setKeepScreenOn,
             )
 
+            SubTitle("Schütteln: erledigte Artikel entfernen")
+            Text(
+                "Kräftiges Schütteln (mehrmals kurz hintereinander) entfernt alle durchgestrichenen Artikel der geöffneten Liste – mit „Rückgängig“.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+            Column(Modifier.selectableGroup()) {
+                ShakeSensitivity.entries.forEach { level ->
+                    RadioRow(level.label, settings.shakeSensitivity == level) { viewModel.setShakeSensitivity(level) }
+                }
+            }
+            ShakeTestCard(settings.shakeSensitivity)
+
             Divider()
             SectionTitle("Artikel")
             NavRow("Artikeldatenbank verwalten", "Vorschläge anzeigen, suchen, hinzufügen, umbenennen, löschen", onOpenCatalog)
@@ -237,6 +259,49 @@ fun SettingsScreen(
             },
             dismissButton = { TextButton(onClick = viewModel::cancelImport) { Text("Abbrechen") } },
         )
+    }
+}
+
+/** Probefeld: zeigt an, ob ein Schütteln mit der gewählten Stufe auslöst – ohne etwas zu löschen. */
+@Composable
+private fun ShakeTestCard(sensitivity: ShakeSensitivity) {
+    val haptics = rememberHaptics()
+    var lastHit by remember { mutableLongStateOf(0L) }
+    var hits by remember { mutableIntStateOf(0) }
+    ShakeEffect(sensitivity = sensitivity, enabled = true) {
+        haptics.strong()
+        hits++
+        lastHit = System.currentTimeMillis()
+    }
+    var showHit by remember { mutableStateOf(false) }
+    LaunchedEffect(lastHit) {
+        if (lastHit > 0) {
+            showHit = true
+            delay(1_500)
+            showHit = false
+        }
+    }
+    val off = sensitivity == ShakeSensitivity.OFF
+    Surface(
+        color = if (showHit) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = if (showHit) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Text(
+                when {
+                    off -> "Schütteln ist ausgeschaltet."
+                    showHit -> "Ausgelöst! ✓"
+                    else -> "Zum Testen jetzt schütteln (hier wird nichts gelöscht)."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (showHit) FontWeight.Bold else FontWeight.Normal,
+            )
+            if (!off && hits > 0) {
+                Text("Bisher $hits× ausgelöst", style = MaterialTheme.typography.bodySmall)
+            }
+        }
     }
 }
 

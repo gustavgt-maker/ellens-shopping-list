@@ -22,6 +22,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val HAPTICS = booleanPreferencesKey("haptics_enabled")
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
         val LAST_LIST = longPreferencesKey("last_opened_list_id")
+        val SHAKE = stringPreferencesKey("shake_sensitivity")
     }
 
     val settings: Flow<AppSettings> = dataStore.data
@@ -36,6 +37,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     suspend fun setHapticsEnabled(enabled: Boolean) = dataStore.edit { it[Keys.HAPTICS] = enabled }
     suspend fun setKeepScreenOn(enabled: Boolean) = dataStore.edit { it[Keys.KEEP_SCREEN_ON] = enabled }
 
+    suspend fun setShakeSensitivity(s: ShakeSensitivity) = dataStore.edit { it[Keys.SHAKE] = s.name }
+
     suspend fun setLastOpenedList(id: Long?) = dataStore.edit {
         if (id == null) it.remove(Keys.LAST_LIST) else it[Keys.LAST_LIST] = id
     }
@@ -47,6 +50,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         it[Keys.FONT_SIZE] = s.fontSize.name
         it[Keys.HAPTICS] = s.hapticsEnabled
         it[Keys.KEEP_SCREEN_ON] = s.keepScreenOn
+        it[Keys.SHAKE] = s.shakeSensitivity.name
         if (s.lastOpenedListId == null) it.remove(Keys.LAST_LIST) else it[Keys.LAST_LIST] = s.lastOpenedListId
     }
 
@@ -57,5 +61,6 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         hapticsEnabled = p[Keys.HAPTICS] ?: true,
         keepScreenOn = p[Keys.KEEP_SCREEN_ON] ?: false,
         lastOpenedListId = p[Keys.LAST_LIST],
+        shakeSensitivity = enumOrDefault(p[Keys.SHAKE], ShakeSensitivity.MEDIUM),
     )
 }

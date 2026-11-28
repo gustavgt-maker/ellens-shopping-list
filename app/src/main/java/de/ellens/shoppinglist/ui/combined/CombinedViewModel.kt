@@ -166,8 +166,23 @@ class CombinedViewModel(
 
     fun toggleDone(itemId: Long) = viewModelScope.launch { repo.toggleDone(itemId) }
 
-    fun deleteItem(itemId: Long) = viewModelScope.launch {
-        repo.deleteItem(itemId)?.let { _events.send(ListEvent.ItemDeleted(it)) }
+    fun deleteItem(itemId: Long, undoable: Boolean = true) = viewModelScope.launch {
+        val deleted = repo.deleteItem(itemId)
+        if (deleted != null && undoable) _events.send(ListEvent.ItemDeleted(deleted))
+    }
+
+    /** Entfernt die erledigten Artikel aller ausgewählten Listen (mit Rückgängig). */
+    fun clearDone() = viewModelScope.launch {
+        val removed = repo.deleteDoneItems(selectedIds)
+        if (removed.isEmpty()) _events.send(ListEvent.Message(de.ellens.shoppinglist.ui.list.NOTHING_TO_CLEAR))
+        else _events.send(ListEvent.DoneCleared(removed))
+    }
+
+    fun undoClearDone(items: List<ShoppingItemEntity>) = viewModelScope.launch {
+        val restored = repo.restoreItems(items)
+        if (restored < items.size) {
+            _events.send(ListEvent.Message("${items.size - restored} Artikel konnten nicht wiederhergestellt werden (bereits vorhanden)"))
+        }
     }
 
     fun undoDelete(item: ShoppingItemEntity) = viewModelScope.launch {

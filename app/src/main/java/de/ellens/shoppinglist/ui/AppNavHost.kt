@@ -76,6 +76,7 @@ fun AppNavHost(container: AppContainer, settings: AppSettings) {
                 onOpenSettings = { nav.navigate(Routes.SETTINGS) { launchSingleTop = true } },
                 onOpenImport = { id -> nav.navigate(Routes.importText(id)) { launchSingleTop = true } },
                 importResult = container.importResult,
+                shakeSensitivity = settings.shakeSensitivity,
             )
         }
         composable(
@@ -104,6 +105,7 @@ fun AppNavHost(container: AppContainer, settings: AppSettings) {
                 viewModel = vm,
                 keepScreenOn = settings.keepScreenOn,
                 onBack = { nav.popBackStack(Routes.OVERVIEW, inclusive = false) },
+                shakeSensitivity = settings.shakeSensitivity,
             )
         }
         composable(Routes.SETTINGS) {

@@ -112,6 +112,12 @@ interface ShoppingItemDao {
     @Query("DELETE FROM shopping_items WHERE id = :id")
     suspend fun delete(id: Long): Int
 
+    @Query("SELECT * FROM shopping_items WHERE list_id IN (:listIds) AND is_done = 1")
+    suspend fun getDoneItems(listIds: List<Long>): List<ShoppingItemEntity>
+
+    @Query("DELETE FROM shopping_items WHERE list_id IN (:listIds) AND is_done = 1")
+    suspend fun deleteDoneItems(listIds: List<Long>): Int
+
     @Query("DELETE FROM shopping_items WHERE list_id = :listId")
     suspend fun deleteAllInList(listId: Long): Int
 

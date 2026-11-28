@@ -21,6 +21,17 @@ enum class FontSizeStep(val label: String, val scale: Float) {
     XXLARGE("Riesig", 1.5f);
 }
 
+/**
+ * Empfindlichkeit für „Schütteln entfernt erledigte Artikel“.
+ * [thresholdG] = nötige Beschleunigung in g (Erdbeschleunigung), [label] für die Einstellungen.
+ */
+enum class ShakeSensitivity(val label: String, val thresholdG: Float) {
+    OFF("Aus", Float.MAX_VALUE),
+    LIGHT("Leicht", 2.0f),
+    MEDIUM("Mittel", 2.6f),
+    STRONG("Stark", 3.3f);
+}
+
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val font: AppFont = AppFont.ROBOTO,
@@ -28,6 +39,7 @@ data class AppSettings(
     val hapticsEnabled: Boolean = true,
     val keepScreenOn: Boolean = false,
     val lastOpenedListId: Long? = null,
+    val shakeSensitivity: ShakeSensitivity = ShakeSensitivity.MEDIUM,
 )
 
 /** Robustes Einlesen gespeicherter Enum-Namen; Unbekanntes fällt auf den Standard zurück. */

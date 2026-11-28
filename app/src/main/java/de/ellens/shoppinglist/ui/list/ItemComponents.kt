@@ -308,15 +308,22 @@ fun ItemRow(
 }
 
 @Composable
-fun DoneHeader(count: Int, modifier: Modifier = Modifier) {
+fun DoneHeader(count: Int, modifier: Modifier = Modifier, onClearAll: (() -> Unit)? = null) {
     Column(modifier.fillMaxWidth()) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        Text(
-            "Erledigt ($count)",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 16.dp, top = 6.dp, bottom = 2.dp),
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Erledigt ($count)",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f).padding(start = 16.dp, top = 6.dp, bottom = 2.dp),
+            )
+            if (onClearAll != null) {
+                TextButton(onClick = onClearAll) {
+                    Text("Alle entfernen", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelLarge)
+                }
+            }
+        }
     }
 }
 

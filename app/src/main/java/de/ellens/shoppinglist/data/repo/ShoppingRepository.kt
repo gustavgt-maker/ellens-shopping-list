@@ -243,6 +243,26 @@ class ShoppingRepository(
         false
     }
 
+    /**
+     * Entfernt alle erledigten Artikel der angegebenen Listen in einer Transaktion.
+     * @return die entfernten Artikel vollständig (für „Rückgängig“).
+     */
+    suspend fun deleteDoneItems(listIds: List<Long>): List<ShoppingItemEntity> {
+        if (listIds.isEmpty()) return emptyList()
+        return db.withTransaction {
+            val done = itemDao.getDoneItems(listIds)
+            if (done.isNotEmpty()) {
+                itemDao.deleteDoneItems(listIds)
+                val now = clock()
+                done.map { it.listId }.distinct().forEach { listDao.touch(it, now) }
+            }
+            done
+        }
+    }
+
+    /** Stellt mehrere Artikel wieder her; übersprungen wird, was inzwischen gleichnamig existiert. */
+    suspend fun restoreItems(items: List<ShoppingItemEntity>): Int = items.count { restoreItem(it) }
+
     private suspend fun learnCatalogEntry(name: String, normalized: String, now: Long) {
         catalogDao.insertIfAbsent(CatalogItemEntity(name = name, normalizedName = normalized, createdAt = now))
     }

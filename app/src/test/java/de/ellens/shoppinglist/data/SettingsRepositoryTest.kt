@@ -5,6 +5,7 @@ import de.ellens.shoppinglist.data.settings.AppFont
 import de.ellens.shoppinglist.data.settings.AppSettings
 import de.ellens.shoppinglist.data.settings.FontSizeStep
 import de.ellens.shoppinglist.data.settings.SettingsRepository
+import de.ellens.shoppinglist.data.settings.ShakeSensitivity
 import de.ellens.shoppinglist.data.settings.ThemeMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -39,13 +40,14 @@ class SettingsRepositoryTest {
         repo1.setHapticsEnabled(false)
         repo1.setKeepScreenOn(true)
         repo1.setLastOpenedList(42L)
+        repo1.setShakeSensitivity(ShakeSensitivity.STRONG)
         // Simuliert App-Ende: DataStore-Instanz vollständig schließen, bevor die Datei neu geöffnet wird.
         job1.cancelAndJoin()
 
         val scope2 = CoroutineScope(Dispatchers.IO + SupervisorJob())
         val repo2 = SettingsRepository(TestSupport.newDataStore(file, scope2))
         assertEquals(
-            AppSettings(ThemeMode.DARK, AppFont.ATKINSON, FontSizeStep.XLARGE, false, true, 42L),
+            AppSettings(ThemeMode.DARK, AppFont.ATKINSON, FontSizeStep.XLARGE, false, true, 42L, ShakeSensitivity.STRONG),
             repo2.current(),
         )
         repo2.setLastOpenedList(null)

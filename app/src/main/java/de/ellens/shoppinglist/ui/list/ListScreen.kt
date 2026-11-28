@@ -85,7 +85,9 @@ import de.ellens.shoppinglist.core.ItemOrdering
 import de.ellens.shoppinglist.data.db.ShoppingItemEntity
 import de.ellens.shoppinglist.data.db.ShoppingListEntity
 import de.ellens.shoppinglist.ui.common.ConfirmDestructiveDialog
+import de.ellens.shoppinglist.data.settings.ShakeSensitivity
 import de.ellens.shoppinglist.ui.common.Haptics
+import de.ellens.shoppinglist.ui.common.ShakeEffect
 import de.ellens.shoppinglist.ui.common.dismissKeyboardOnTouch
 import de.ellens.shoppinglist.ui.common.ListEditDialog
 import de.ellens.shoppinglist.ui.common.NameInputDialog
@@ -109,6 +111,7 @@ fun ListScreen(
     onOpenSettings: () -> Unit,
     onOpenImport: (listId: Long) -> Unit = {},
     importResult: MutableStateFlow<ImportDone?>? = null,
+    shakeSensitivity: ShakeSensitivity = ShakeSensitivity.OFF,
 ) {
     val screenState by viewModel.screenState.collectAsStateWithLifecycle()
     val lists by viewModel.allLists.collectAsStateWithLifecycle()
@@ -152,6 +155,15 @@ fun ListScreen(
                             duration = SnackbarDuration.Long,
                         )
                         if (result == SnackbarResult.ActionPerformed) viewModel.undoDelete(event.item)
+                    }
+                    is ListEvent.DoneCleared -> {
+                        val n = event.items.size
+                        val result = snackbar.showSnackbar(
+                            message = if (n == 1) "1 erledigter Artikel entfernt" else "$n erledigte Artikel entfernt",
+                            actionLabel = "Rückgängig",
+                            duration = SnackbarDuration.Long,
+                        )
+                        if (result == SnackbarResult.ActionPerformed) viewModel.undoClearDone(event.items)
                     }
                 }
             }
@@ -280,7 +292,10 @@ fun ListScreen(
                         onScrollHandled = { pendingScrollToId = null },
                         onToggle = { id -> haptics.tick(); dismissKeyboard(); viewModel.toggleDone(id) },
                         onEdit = { id -> dismissKeyboard(); editItemId = id },
-                        onDelete = { id -> haptics.strong(); dismissKeyboard(); viewModel.deleteItem(id) },
+                        // Wischen bei erledigten Artikeln: sofort löschen, ohne Rückgängig-Meldung.
+                        onDelete = { id -> haptics.strong(); dismissKeyboard(); viewModel.deleteItem(id, undoable = false) },
+                        onClearDone = { haptics.strong(); dismissKeyboard(); viewModel.clearDone() },
+                        shakeSensitivity = shakeSensitivity,
                         onMove = { id, index -> viewModel.moveOpenItem(id, index) },
                         onSaveScroll = viewModel::saveScroll,
                         onUserInteraction = dismissKeyboard,
@@ -466,6 +481,8 @@ private fun ListContent(
     onToggle: (Long) -> Unit,
     onEdit: (Long) -> Unit,
     onDelete: (Long) -> Unit,
+    onClearDone: () -> Unit,
+    shakeSensitivity: ShakeSensitivity,
     onMove: (itemId: Long, toIndex: Int) -> Unit,
     onSaveScroll: (listId: Long, index: Int, offset: Int) -> Unit,
     onUserInteraction: () -> Unit,
@@ -493,9 +510,10 @@ private fun ListContent(
         onDispose { onSaveScroll(listId, listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) }
     }
 
-    // Während Drag & Drop wird eine lokale Reihenfolge angezeigt (flüssig, ohne Datenbankzugriff
-    // pro Schritt). Gespeichert wird beim Loslassen. Die lokale Reihenfolge wird immer mit dem
-    // aktuellen Datenbankstand zusammengeführt, damit kein Artikel doppelt erscheinen kann.
+    // Während Drag & Drop wird eine lokale Reihenfolge angezeigt (flüssig). Jede Zwischenposition
+    // wird sofort gespeichert (der Reihe nach), damit nach einem Abbruch der Geste nichts
+    // zurückspringt. Die lokale Reihenfolge wird immer mit dem aktuellen Datenbankstand
+    // zusammengeführt, damit kein Artikel doppelt erscheinen kann.
     var openLocal by remember(listId) { mutableStateOf(content.open) }
     var useLocal by remember(listId) { mutableStateOf(false) }
     var draggingId by remember(listId) { mutableStateOf<Long?>(null) }
@@ -514,10 +532,30 @@ private fun ListContent(
         val fromIndex = openLocal.indexOfFirst { it.id == from.key }
         val toIndex = openLocal.indexOfFirst { it.id == to.key }
         if (fromIndex >= 0 && toIndex >= 0 && fromIndex != toIndex) {
+            val movedId = openLocal[fromIndex].id
             openLocal = openLocal.toMutableList().apply { add(toIndex, removeAt(fromIndex)) }
             haptics.tick()
+            onMove(movedId, toIndex)
         }
     }
+    // Endet das Ziehen auf irgendeine Weise (auch ohne „Losgelassen“-Ereignis), Zustand freigeben.
+    LaunchedEffect(reorderState) {
+        snapshotFlow { reorderState.isAnyItemDragging }.collect { dragging ->
+            if (!dragging && draggingId != null) {
+                val id = draggingId!!
+                val index = openLocal.indexOfFirst { it.id == id }
+                draggingId = null
+                if (index >= 0) onMove(id, index)
+            }
+        }
+    }
+
+    // Schütteln entfernt alle erledigten Artikel (nicht während des Ziehens).
+    ShakeEffect(
+        sensitivity = shakeSensitivity,
+        enabled = draggingId == null && content.done.isNotEmpty(),
+        onShake = onClearDone,
+    )
 
     // Neu hinzugefügten Artikel sichtbar machen, falls er außerhalb des Bildschirms liegt.
     LaunchedEffect(pendingScrollToId, displayedOpen) {
@@ -586,6 +624,7 @@ private fun ListContent(
             item(key = "done_header") {
                 DoneHeader(
                     count = content.done.size,
+                    onClearAll = onClearDone,
                     modifier = if (reduceMotion) Modifier else Modifier.animateItem(),
                 )
             }

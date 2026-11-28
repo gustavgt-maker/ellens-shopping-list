@@ -52,6 +52,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -69,7 +70,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.ellens.shoppinglist.core.CombinedOrdering
 import de.ellens.shoppinglist.data.db.ShoppingListEntity
+import de.ellens.shoppinglist.data.settings.ShakeSensitivity
 import de.ellens.shoppinglist.ui.common.Haptics
+import de.ellens.shoppinglist.ui.common.ShakeEffect
 import de.ellens.shoppinglist.ui.common.dismissKeyboardOnTouch
 import de.ellens.shoppinglist.ui.common.rememberHaptics
 import de.ellens.shoppinglist.ui.list.DoneHeader
@@ -96,6 +99,7 @@ fun CombinedScreen(
     viewModel: CombinedViewModel,
     keepScreenOn: Boolean,
     onBack: () -> Unit,
+    shakeSensitivity: ShakeSensitivity = ShakeSensitivity.OFF,
 ) {
     val screenState by viewModel.screenState.collectAsStateWithLifecycle()
     val suggestions by viewModel.suggestions.collectAsStateWithLifecycle()
@@ -131,6 +135,15 @@ fun CombinedScreen(
                             duration = SnackbarDuration.Long,
                         )
                         if (result == SnackbarResult.ActionPerformed) viewModel.undoDelete(event.item)
+                    }
+                    is ListEvent.DoneCleared -> {
+                        val n = event.items.size
+                        val result = snackbar.showSnackbar(
+                            message = if (n == 1) "1 erledigter Artikel entfernt" else "$n erledigte Artikel entfernt",
+                            actionLabel = "Rückgängig",
+                            duration = SnackbarDuration.Long,
+                        )
+                        if (result == SnackbarResult.ActionPerformed) viewModel.undoClearDone(event.items)
                     }
                 }
             }
@@ -229,7 +242,9 @@ fun CombinedScreen(
                 haptics = haptics,
                 onToggle = { id -> haptics.tick(); dismissKeyboard(); viewModel.toggleDone(id) },
                 onEdit = { id -> dismissKeyboard(); editItemId = id },
-                onDelete = { id -> haptics.strong(); dismissKeyboard(); viewModel.deleteItem(id) },
+                onDelete = { id -> haptics.strong(); dismissKeyboard(); viewModel.deleteItem(id, undoable = false) },
+                onClearDone = { haptics.strong(); dismissKeyboard(); viewModel.clearDone() },
+                shakeSensitivity = shakeSensitivity,
                 onReorder = viewModel::setBlockOrder,
                 onUserInteraction = dismissKeyboard,
             )
@@ -263,6 +278,8 @@ private fun CombinedContent(
     onToggle: (Long) -> Unit,
     onEdit: (Long) -> Unit,
     onDelete: (Long) -> Unit,
+    onClearDone: () -> Unit,
+    shakeSensitivity: ShakeSensitivity,
     onReorder: (List<String>) -> Unit,
     onUserInteraction: () -> Unit,
 ) {
@@ -303,9 +320,25 @@ private fun CombinedContent(
             if (toIndex >= 0 && fromKey in localKeys) {
                 localKeys = CombinedOrdering.move(localKeys, fromKey, toIndex)
                 haptics.tick()
+                // Sofort übernehmen, damit nach einem Abbruch der Geste nichts zurückspringt.
+                onReorder(localKeys)
             }
         }
     }
+
+    LaunchedEffect(reorderState) {
+        snapshotFlow { reorderState.isAnyItemDragging }.collect { isDragging ->
+            if (!isDragging && dragging) {
+                dragging = false
+                onReorder(localKeys)
+            }
+        }
+    }
+    ShakeEffect(
+        sensitivity = shakeSensitivity,
+        enabled = !dragging && state.done.isNotEmpty(),
+        onShake = onClearDone,
+    )
 
     val layoutDirection = LocalLayoutDirection.current
     LazyColumn(
@@ -383,7 +416,11 @@ private fun CombinedContent(
         }
         if (state.done.isNotEmpty()) {
             item(key = "done_header") {
-                DoneHeader(count = state.done.size, modifier = if (reduceMotion) Modifier else Modifier.animateItem())
+                DoneHeader(
+                    count = state.done.size,
+                    modifier = if (reduceMotion) Modifier else Modifier.animateItem(),
+                    onClearAll = onClearDone,
+                )
             }
             items(state.done, key = { it.id }) { item ->
                 SwipeToDeleteItem(

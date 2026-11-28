@@ -67,4 +67,6 @@ data class BackupSettings(
     val hapticsEnabled: Boolean = true,
     val keepScreenOn: Boolean = false,
     val lastOpenedListId: Long? = null,
+    /** Ab App-Version 1.3. */
+    val shakeSensitivity: String = "MEDIUM",
 )

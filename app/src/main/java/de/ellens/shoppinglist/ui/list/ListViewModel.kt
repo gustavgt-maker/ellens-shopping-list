@@ -48,7 +48,12 @@ sealed interface ListScreenState {
 sealed interface ListEvent {
     data class Message(val text: String) : ListEvent
     data class ItemDeleted(val item: ShoppingItemEntity) : ListEvent
+    /** Mehrere erledigte Artikel auf einmal entfernt (Schütteln oder „Alle entfernen“). */
+    data class DoneCleared(val items: List<ShoppingItemEntity>) : ListEvent
 }
+
+/** Hinweis, wenn „Erledigte entfernen“ nichts zu tun hat. */
+const val NOTHING_TO_CLEAR = "Keine erledigten Artikel vorhanden"
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ListViewModel(
@@ -134,12 +139,44 @@ class ListViewModel(
 
     fun toggleDone(itemId: Long) = viewModelScope.launch { repo.toggleDone(itemId) }
 
-    fun moveOpenItem(itemId: Long, toIndex: Int) = viewModelScope.launch {
-        repo.moveOpenItem(currentListId.value, itemId, toIndex)
+    /**
+     * Verschiebe-Aufträge werden strikt der Reihe nach gespeichert. Die Oberfläche meldet jede
+     * Zwischenposition während des Ziehens; so ist die letzte Position auch dann gespeichert,
+     * wenn die Geste abbricht (Finger rutscht ab, Systemgeste, Anruf …).
+     */
+    private val moveRequests = Channel<Triple<Long, Long, Int>>(Channel.UNLIMITED)
+
+    init {
+        viewModelScope.launch {
+            for ((listId, itemId, index) in moveRequests) repo.moveOpenItem(listId, itemId, index)
+        }
     }
 
-    fun deleteItem(itemId: Long) = viewModelScope.launch {
-        repo.deleteItem(itemId)?.let { _events.send(ListEvent.ItemDeleted(it)) }
+    fun moveOpenItem(itemId: Long, toIndex: Int) {
+        moveRequests.trySend(Triple(currentListId.value, itemId, toIndex))
+    }
+
+    /**
+     * @param undoable true: Meldung mit „Rückgängig“ (Löschen eines offenen Artikels über den
+     *   Bearbeiten-Dialog). false: sofort und ohne Meldung (Wischen bei erledigten Artikeln).
+     */
+    fun deleteItem(itemId: Long, undoable: Boolean = true) = viewModelScope.launch {
+        val deleted = repo.deleteItem(itemId)
+        if (deleted != null && undoable) _events.send(ListEvent.ItemDeleted(deleted))
+    }
+
+    /** Entfernt alle erledigten Artikel der aktuellen Liste (mit Rückgängig). */
+    fun clearDone() = viewModelScope.launch {
+        val removed = repo.deleteDoneItems(listOf(currentListId.value))
+        if (removed.isEmpty()) _events.send(ListEvent.Message(NOTHING_TO_CLEAR))
+        else _events.send(ListEvent.DoneCleared(removed))
+    }
+
+    fun undoClearDone(items: List<ShoppingItemEntity>) = viewModelScope.launch {
+        val restored = repo.restoreItems(items)
+        if (restored < items.size) {
+            _events.send(ListEvent.Message("${items.size - restored} Artikel konnten nicht wiederhergestellt werden (bereits vorhanden)"))
+        }
     }
 
     fun undoDelete(item: ShoppingItemEntity) = viewModelScope.launch {

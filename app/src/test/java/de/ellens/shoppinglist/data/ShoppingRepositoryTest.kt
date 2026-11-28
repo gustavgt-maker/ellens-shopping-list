@@ -266,6 +266,27 @@ class ShoppingRepositoryTest {
         assertEquals(3, catalog.observeAll().first().size)
     }
 
+    @Test fun clearDone_removesOnlyDoneItemsAndCanBeUndone() = runBlocking {
+        val a = repo.createList("Privat")!!
+        val b = repo.createList("Arbeit")!!
+        val milch = add(a, "Milch", "2"); add(a, "Brot"); val eier = add(a, "Eier", "10")
+        val kaffee = add(b, "Kaffee")
+        repo.toggleDone(milch); repo.toggleDone(eier); repo.toggleDone(kaffee)
+        val before = db.itemDao().getAllItems()
+
+        val removed = repo.deleteDoneItems(listOf(a))
+        assertEquals(setOf("Milch", "Eier"), removed.map { it.name }.toSet())
+        assertEquals("Offene Artikel bleiben", listOf("Brot"), items(a).map { it.name })
+        assertEquals("Andere Liste unberührt", 1, items(b).size)
+
+        assertEquals(2, repo.restoreItems(removed))
+        assertEquals("Vollständig wiederhergestellt", before.sortedBy { it.id }, db.itemDao().getAllItems().sortedBy { it.id })
+
+        val both = repo.deleteDoneItems(listOf(a, b))
+        assertEquals(3, both.size)
+        assertTrue(repo.deleteDoneItems(listOf(a, b)).isEmpty())
+    }
+
     @Test fun scrollPosition_isStored() = runBlocking {
         val list = repo.createList("L")!!
         repo.saveScrollPosition(list, 12, 34)

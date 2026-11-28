@@ -15,6 +15,7 @@ import de.ellens.shoppinglist.data.backup.StoredBackup
 import de.ellens.shoppinglist.data.settings.AppFont
 import de.ellens.shoppinglist.data.settings.FontSizeStep
 import de.ellens.shoppinglist.data.settings.SettingsRepository
+import de.ellens.shoppinglist.data.settings.ShakeSensitivity
 import de.ellens.shoppinglist.data.settings.ThemeMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -56,6 +57,7 @@ class SettingsViewModel(
     fun setFontSize(step: FontSizeStep) = viewModelScope.launch { settings.setFontSize(step) }
     fun setHaptics(enabled: Boolean) = viewModelScope.launch { settings.setHapticsEnabled(enabled) }
     fun setKeepScreenOn(enabled: Boolean) = viewModelScope.launch { settings.setKeepScreenOn(enabled) }
+    fun setShakeSensitivity(s: ShakeSensitivity) = viewModelScope.launch { settings.setShakeSensitivity(s) }
 
     fun refreshBackups() = viewModelScope.launch {
         _internalBackups.value = withContext(Dispatchers.IO) { backups.listInternalBackups() }
